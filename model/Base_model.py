@@ -7,7 +7,7 @@ from collections import OrderedDict
 class Base_model():
     def initialize(self, opt):
         self.gpu_ids = opt.gpu_ids
-        self.device =  torch.device('cpu')
+        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
         self.schedulers = []
         self.optimizers = []
         self.save_model_dir = opt.save_model_dir if opt.save_model_dir else './'

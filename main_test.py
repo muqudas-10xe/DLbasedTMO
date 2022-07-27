@@ -20,7 +20,7 @@ if __name__ == '__main__':
     dataset_name = opt.dataset_name
     mat_name = opt.mat_name
 
-    hdr = sio.loadmat(hdr_path)['M']
+    hdr = sio.loadmat(hdr_path)['hdr']
     hdr = torch.from_numpy(hdr).float()
     if hdr.min() < 0:
         hdr = hdr - hdr.min()

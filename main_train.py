@@ -13,6 +13,22 @@ import torch.backends.cudnn as cudnn
 import os
 import time
 
+import os
+from parameter.RASSDL_param import *
+
+
+def add_backslash(str_name):
+    l = len(str_name)
+    new_name = ''
+    for i in range(l):
+        if str_name[i] == '(':
+            new_name = new_name + '/('
+        elif str_name[i] == ')':
+            new_name = new_name + '/)'
+        else:
+            new_name = new_name + str_name[i]
+    return new_name
+
 
 def cal_k(hdr_y):
     eps = 1e-8
@@ -24,7 +40,7 @@ def cal_k(hdr_y):
     A = 0.4
     B = 1.2
     k = A * np.power(B, (np.log(Iave + eps) * 2 - np.log(Imin + eps) - np.log(Imax + eps)) / (
-                np.log(Imax + eps) - np.log(Imin + eps)))
+            np.log(Imax + eps) - np.log(Imin + eps)))
     return k
 
 
@@ -35,7 +51,7 @@ def cal_tao(hdr_y, k):
 
     tao_0 = 1e-8
     num = 0
-    while(True):
+    while (True):
         num += 1
         tmp1 = (1 / (I + tao_0) - 1 / (Imin + tao_0)) * (np.log(Imax + tao_0) - np.log(Imin + tao_0))
         tmp2 = (np.log(I + tao_0) - np.log(Imin + tao_0)) * (1 / (Imax + tao_0) - 1 / (Imin + tao_0))
@@ -72,7 +88,7 @@ def add_data(h5_file, mat_path, height, width, max_images, nums, scale, stride):
     def read_worker():
         while True:
             idx, filename = input_queue.get()
-            hdr = sio.loadmat(filename)['M']
+            hdr = sio.loadmat(filename)['hdr']
             hdr = np.ascontiguousarray(hdr[:, :, ::-1], dtype=np.float32)
             if hdr.min() < 0:
                 hdr = hdr - hdr.min()
@@ -81,7 +97,8 @@ def add_data(h5_file, mat_path, height, width, max_images, nums, scale, stride):
             k = cal_k(hdr_y)
             tao = cal_tao(hdr_y, k)
             hdr_y_tao = hdr_y + tao + 1e-8
-            log_y = (np.log(hdr_y_tao) - np.log(hdr_y_tao.min())) / (np.log(hdr_y_tao.max()) - (np.log(hdr_y_tao.min())))
+            log_y = (np.log(hdr_y_tao) - np.log(hdr_y_tao.min())) / (
+                    np.log(hdr_y_tao.max()) - (np.log(hdr_y_tao.min())))
             H, W = log_y.shape[0], log_y.shape[1]
 
             h = 0
@@ -112,18 +129,56 @@ def add_data(h5_file, mat_path, height, width, max_images, nums, scale, stride):
             if img.ndim == 3:
                 imgs_dset1[idx] = img.transpose(2, 0, 1)
 
-                img_equlized = np.array(img * 255, dtype=np.uint8)
-                img_equlized = cv2.equalizeHist(img_equlized)
-                img_equlized = np.array(img_equlized / 255, dtype=np.float32)
-                imgs_dset2[idx] = img_equlized
-            elif img.ndim == 2:
-                imgs_dset1[idx] = img
+                # img_equlized = np.array(img * 255, dtype=np.uint8)
+                # img_equlized = cv2.equalizeHist(img_equlized)
+                # img_equlized = np.array(img_equlized / 255, dtype=np.float32)
+                # imgs_dset2[idx] = img_equlized
 
+                # imgs_dset1[idx] = img
+                # img_equlized = np.array(img * 255, dtype=np.uint8)
+                # img_equlized = cv2.bilateralFilter(img_equlized, 15, 75, 75)
+                # img_equlized = img_equlized - img
+                # img_equlized = np.array(img_equlized / 255, dtype=np.float32)
+                # imgs_dset2[idx] = img_equlized
+                img_equlized = np.array(img_equlized * 255, dtype=np.uint8)
+                # img_equlized = cv2.equalizeHist(img_equlized)
+                # img_equlized = np.array(img_equlized / 255, dtype=np.float32)
+                # imgs_dset2[idx] = img_equlized
+                H, W = img_equlized.shape[0], img_equlized.shape[1]
+                sigma_s = max([H, W]) * 0.02
+                sigma_r = 0.4
+                img_equlized = cv2.bilateralFilter(img_equlized, 5, sigma_s, sigma_r)
+                img_equlized = cv2.equalizeHist(img_equlized)
+                # creating base layer
+                imgs_dset1[idx] = np.array(img_equlized / 255, dtype=np.float32)
+                # creating detail layer
+                detail = img
+                # detail[img > 0.0] = img[img_equlized > 0.0] / img_equlized[img_equlized > 0.0]
+                detail = detail / img_equlized
+                a1 = 1.5
+                a2 = 0.2
+                beta = a1 + a2
+                detail = beta * detail
+                detail = cv2.equalizeHist(detail)
+                detail = np.array(detail / 255, dtype=np.float32)
+                imgs_dset2[idx] = detail
+
+            elif img.ndim == 2:
                 img_equlized = img[..., np.newaxis]
                 img_equlized = np.array(img_equlized * 255, dtype=np.uint8)
-                img_equlized = cv2.equalizeHist(img_equlized)
-                img_equlized = np.array(img_equlized / 255, dtype=np.float32)
-                imgs_dset2[idx] = img_equlized
+                # img_equlized = cv2.equalizeHist(img_equlized)
+                # img_equlized = np.array(img_equlized / 255, dtype=np.float32)
+                # imgs_dset2[idx] = img_equlized
+
+                img_equlized = cv2.bilateralFilter(img_equlized, 15, 75, 75)
+                # creating base layer
+                imgs_dset1[idx] = np.array(img_equlized / 255, dtype=np.float32)
+                # creating detail layer
+                detail = img
+                # detail[img > 0.0] = img[img_equlized > 0.0] / img_equlized[img_equlized > 0.0]
+                detail = detail / img_equlized;
+                detail = np.array(detail / 255, dtype=np.float32)
+                imgs_dset2[idx] = detail
             output_queue.task_done()
             num_written = num_written + 1
             # if num_written % 10 == 0:
@@ -157,7 +212,7 @@ def create_h5(mat_path, mat_name, dataset, size, scale):
     max_images = -1
     stride = int(size * scale / 2)
 
-    hdr = sio.loadmat(mat_path)['M']
+    hdr = sio.loadmat(mat_path)['hdr']
     hdr = np.ascontiguousarray(hdr[:, :, ::-1], dtype=np.float32)
     H, W = hdr.shape[0], hdr.shape[1]
     nums = int((H - (height * scale - 1) + stride - 1) / stride) * int((W - (width * scale - 1) + stride - 1) / stride)
@@ -169,10 +224,23 @@ def create_h5(mat_path, mat_name, dataset, size, scale):
 
 if __name__ == '__main__':
     opt = parser.parse_args()
+
+    epoch_label = opt.nEpochs
+    size = opt.size
+    scale = opt.scale
+    save_model_dir = opt.save_model_dir
+    dataset_name = opt.dataset_name
+    data_dir = './{}/'.format(dataset_name)
+
+    mat_name = 'img120'
+    mat_name = add_backslash(mat_name)
+    mat_file = mat_name + '.mat'
+    mat_path = 'test/img120.mat'
+    print(mat_path)
+
+    opt = parser.parse_args()
     cudnn.benchmark = True
 
-    mat_path = opt.mat_path
-    mat_name = opt.mat_name
     dataset_name = opt.dataset_name
     size = opt.size
 
@@ -195,9 +263,9 @@ if __name__ == '__main__':
             model.train()
             lr = model.get_current_learning_rate()
             if i % 4 == 0:
-                print('epoch: {}, current_step: {}, loss: {}, lr: {}'.format(epoch, current_step, model.loss.item(), lr))
+                print(
+                    'epoch: {}, current_step: {}, loss: {}, lr: {}'.format(epoch, current_step, model.loss.item(), lr))
         model.update_learning_rate(current_step)
     time_end = time.time()
-    print('running time: {}'.format(time_end-time_start))
+    print('running time: {}'.format(time_end - time_start))
     save_path = model.save(mat_name, epoch, size, scale)
-

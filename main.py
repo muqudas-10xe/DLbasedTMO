@@ -42,6 +42,7 @@ if __name__ == '__main__':
             print(mat_path)
 
             commend = 'python main_train.py --mat-path={} --mat-name={}'.format(mat_path, mat_name)
+
             os.system(commend)
 
             save_path = '{}/{}/{}_{}_{}.pth'.format(save_model_dir, mat_name, epoch_label, size, scale)

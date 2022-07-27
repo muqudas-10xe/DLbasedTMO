@@ -100,7 +100,7 @@ class RASSDL_model(Base_model):
             self.loss_vgg_list = self.criterion1(self.output[n].unsqueeze(0), self.target_vgg[n].unsqueeze(0))
             self.loss_vgg_equlized_list = self.criterion1(self.output[n].unsqueeze(0), self.target_vgg_equlized[n].unsqueeze(0))
 
-            weight_vgg_equlized = 0.4
+            weight_vgg_equlized = 0.7
             kl = ((self.his_equlized[n] + 1e-8) * ((self.his_equlized[n] + 1e-8).log() - (self.his_linear[n] + 1e-8).log())).sum()
             weight_vgg_equlized = weight_vgg_equlized * (1 / (1 + torch.exp((kl - 10.7) * 1.5)))
 

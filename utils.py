@@ -44,7 +44,7 @@ def cal_histogram(img_unfold, bins_num):
     local_target_linear = []
     local_target_equlized = []
     for i in range(img_unfold.size(0)):
-        target_linear = torch.histc(img_unfold[i, :, :, :].cpu(), bins=bins_num, min=0, max=0)
+        target_linear = torch.histc(img_unfold[i, :, :, :].cpu(), bins=bins_num, min=0, max=1)
         target_linear = target_linear.div(target_linear.sum()).unsqueeze(0).unsqueeze(2).unsqueeze(3)
         local_target_linear.append(target_linear)
 
